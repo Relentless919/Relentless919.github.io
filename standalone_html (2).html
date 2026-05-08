@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Relentless Team Numbers Analyzer 2026</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Inter',system-ui,sans-serif;background:#f1f5f9;height:100vh;overflow:hidden;}
+    input[type=number]::-webkit-inner-spin-button{opacity:1;}
+    ::-webkit-scrollbar{width:6px;height:6px;}
+    ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px;}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const{useState,useEffect,useCallback}=React;
+
+const STORAGE_KEY="rt_na_v11";
+const PAGES=["Dashboard","Report Numbers","My Reports","My Ratios","Business Plan","Manage Contracts","Set Schedule"];
+const WEEK_ROWS=[
+  {key:"worked",label:"Worked",type:"check"},
+  {key:"hours",label:"Hours Prospected",type:"hours"},
+  {key:"contacts",label:"Contacts",type:"num"},
+  {key:"apptSet",label:"Listing Appointments Set",type:"num"},
+  {key:"apptGoneOn",label:"Listing Appointments Gone On",type:"num"},
+  {key:"apptTurnedDown",label:"Listing Appointments Turned Down",type:"num"},
+  {key:"listingsTaken",label:"Listings Taken",type:"num"},
+  {key:"buyerContract",label:"Buyers Contract",type:"num"},
+  {key:"listingsSold",label:"Listings Sold",type:"num"},
+  {key:"buyerSales",label:"Buyer Sales",type:"num"},
+];
+const HOURS_OPTS=["0:00","0:15","0:30","0:45","1:00","1:15","1:30","1:45","2:00","2:15","2:30","2:45","3:00","3:15","3:30","3:45","4:00","4:30","5:00","5:30","6:00","6:30","7:00","7:30","8:00"];
+const CONTRACT_STATUSES=["Active","Pending","Settled","Coming Soon","Closed","Paid","Fell Apart","Expired","Cancelled"];
+const STATUS_COLORS={Active:"#3b82f6",Pending:"#f59e0b",Settled:"#10b981","Coming Soon":"#8b5cf6",Closed:"#6b7280","Fell Apart":"#ef4444",Expired:"#6b7280",Cancelled:"#9ca3af",Paid:"#10b981"};
+const BLUE="#3730a3";const LBLUE="#4f46e5";
+
+function emptyWeek(){const w={};WEEK_ROWS.forEach(r=>{w[r.key]=r.type==="check"?false:r.type==="hours"?"0:00":0;});return w;}
+function getCurrentWeekKey(){const d=new Date();const day=d.getDay();const diff=d.getDate()-day+(day===0?-6:1);const mon=new Date(d);mon.setDate(diff);return mon.toISOString().slice(0,10);}
+function hoursToNum(h){if(!h)return 0;const[hh,mm]=h.split(":").map(Number);return(hh||0)+(mm||0)/60;}
+function numToHours(n){const h=Math.floor(n),m=Math.round((n-h)*60);return h+":"+(m<10?"0":"")+m;}
+
+const DEFAULT_YTD={dials:15948,contacts:1041,apptSet:27,leads:9,hoursH:119,hoursM:25,coi:0,buyerAppts:0,apptGoneOn:15,apptTurnedDown:0,listingsTaken:11,buyerContract:0,listingsSold:9,buyerSales:1,workedDays:88};
+const DEFAULT_GOALS={workedDays:245,hoursProspected:875,contacts:7200,apptSet:120,apptGoneOn:70,listingsTaken:50,listingsSold:42,buyerSales:3,avgCommission:10800,income:300000,transactions:45};
+const DEFAULT_CONTRACTS=[
+  {id:"c1",type:"Listing",status:"Settled",address:"444 Barnette Road, Louisburg",price:400000,gross:12000,net:9414.50,source:"Expired",pendingDate:"2025-12-01",closedDate:"2025-12-22",paidDate:"2026-01-05",city:"Louisburg",dom:21},
+  {id:"c2",type:"Listing",status:"Settled",address:"60 Brodie Cedar Way, Clayton",price:356000,gross:8544,net:6623.78,source:"Expired",pendingDate:"2026-01-15",closedDate:"2026-02-03",paidDate:"2026-02-04",city:"Clayton",dom:19},
+  {id:"c3",type:"Listing",status:"Settled",address:"11710 Mezzanine Drive 111, Raleigh",price:200000,gross:6000,net:4569.50,source:"Expired",pendingDate:"2026-01-20",closedDate:"2026-02-12",paidDate:"2026-02-17",city:"Raleigh",dom:23},
+  {id:"c4",type:"Listing",status:"Settled",address:"86 Sharpstone Lane, Clayton",price:407000,gross:12210,net:9821.57,source:"Expired",pendingDate:"2026-01-28",closedDate:"2026-02-26",paidDate:"2026-02-27",city:"Clayton",dom:29},
+  {id:"c5",type:"Listing",status:"Settled",address:"40 Muirfield Drive, Youngsville",price:425000,gross:12750,net:10257.62,source:"Expired",pendingDate:"2026-02-05",closedDate:"2026-02-27",paidDate:"2026-03-02",city:"Youngsville",dom:22},
+  {id:"c6",type:"Listing",status:"Settled",address:"3451 Massey Pond Trail, Raleigh",price:510000,gross:15300,net:12316.75,source:"Expired",pendingDate:"2026-02-12",closedDate:"2026-03-13",paidDate:"2026-03-13",city:"Raleigh",dom:30},
+  {id:"c7",type:"Listing",status:"Settled",address:"113 Fetzer Court, Cary",price:645000,gross:19350,net:16970.28,source:"Expired",pendingDate:"2026-02-20",closedDate:"2026-03-30",paidDate:"2026-03-31",city:"Cary",dom:38},
+  {id:"c8",type:"Listing",status:"Settled",address:"1727 River Run Court, Franklinton",price:550000,gross:16500,net:14782.50,source:"Expired",pendingDate:"2026-02-28",closedDate:"2026-04-02",paidDate:"2026-04-03",city:"Franklinton",dom:33},
+  {id:"c9",type:"Listing",status:"Settled",address:"740 Rockville Road, Wake Forest",price:450000,gross:13500,net:12082.50,source:"Expired",pendingDate:"2026-03-05",closedDate:"2026-04-09",paidDate:"2026-04-09",city:"Wake Forest",dom:35},
+  {id:"c10",type:"Listing",status:"Settled",address:"1896 Old Route 22, Kenly",price:299000,gross:8970,net:8005.50,source:"Expired",pendingDate:"2026-03-10",closedDate:"2026-04-22",paidDate:"2026-04-24",city:"Kenly",dom:43},
+  {id:"c11",type:"Listing",status:"Active",address:"1422 Joe Louis Avenue, Raleigh",price:649900,gross:19497,net:16990,source:"Expired",pendingDate:"",closedDate:"",paidDate:"",city:"Raleigh",dom:160},
+  {id:"c12",type:"Listing",status:"Active",address:"1179 Cottonsprings Drive, Wendell Falls",price:475000,gross:14250,net:12416,source:"Expired",pendingDate:"",closedDate:"",paidDate:"",city:"Wendell",dom:41},
+  {id:"c13",type:"Listing",status:"Active",address:"3827 Glenhaven Road, Raleigh",price:325000,gross:9750,net:8495,source:"Expired",pendingDate:"",closedDate:"",paidDate:"",city:"Raleigh",dom:35},
+  {id:"c14",type:"Listing",status:"Active",address:"820 East Cardinal Drive, Fuquay-Varina",price:475000,gross:14250,net:12416,source:"Expired",pendingDate:"",closedDate:"",paidDate:"",city:"Fuquay-Varina",dom:119},
+  {id:"c15",type:"Listing",status:"Pending",address:"125 Rustic Lane, Smithfield",price:375000,gross:11250,net:9440,source:"Expired",pendingDate:"2026-04-30",closedDate:"2026-06-02",paidDate:"",city:"Smithfield",dom:7},
+  {id:"c16",type:"Listing",status:"Cancelled",address:"446 Marcellus Way, Clayton",price:725000,gross:21750,net:0,source:"Expired",pendingDate:"",closedDate:"",paidDate:"",city:"Clayton",dom:21},
+];
+
+function buildDefaultSchedule(){
+  const sched={};
+  const skipDates=new Set(["2026-01-01","2026-01-19","2026-02-16"]);
+  const start=new Date("2026-01-01");const end=new Date("2026-05-07");
+  for(let d=new Date(start);d<=end;d.setDate(d.getDate()+1)){
+    const day=d.getDay();const ds=d.toISOString().slice(0,10);
+    if(day>=1&&day<=5&&!skipDates.has(ds))sched[ds]=true;
+  }
+  return sched;
+}
+
+function defaultState(){return{weeks:{[getCurrentWeekKey()]:emptyWeek()},ytdBaseline:DEFAULT_YTD,contracts:DEFAULT_CONTRACTS,goals:DEFAULT_GOALS,schedule:buildDefaultSchedule(),days:{}};}
+
+function App(){
+  const[state,setState]=useState(null);
+  const[page,setPage]=useState("Dashboard");
+  const[showYtd,setShowYtd]=useState(false);
+  const[showContract,setShowContract]=useState(false);
+  const[editC,setEditC]=useState(null);
+  const[cfType,setCfType]=useState("All");
+  const[cfStatus,setCfStatus]=useState("All");
+  const[ytdForm,setYtdForm]=useState(null);
+  const[selMonth,setSelMonth]=useState(new Date().getMonth());
+  const[selectedDate,setSelectedDate]=useState(new Date().toISOString().slice(0,10));
+  const[sidebarOpen,setSidebarOpen]=useState(true);
+  const[carouselIdx,setCarouselIdx]=useState(0);
+
+  useEffect(()=>{
+    let s;
+    try{const r=localStorage.getItem(STORAGE_KEY);s=r?JSON.parse(r):defaultState();}catch(e){s=defaultState();}
+    if(!s.ytdBaseline)s.ytdBaseline=DEFAULT_YTD;
+    if(!s.goals)s.goals=DEFAULT_GOALS;
+    if(!s.contracts)s.contracts=DEFAULT_CONTRACTS;
+    if(!s.schedule)s.schedule={};
+    if(!s.weeks)s.weeks={};
+    if(!s.days)s.days={};
+    if(!s.daysSeeded){
+      const sched=s.schedule||{};
+      const workedDays=Object.keys(sched).filter(dk=>sched[dk]&&dk>="2026-01-01"&&dk<="2026-04-30").sort();
+      if(workedDays.length>0){
+        const b=s.ytdBaseline;
+        const totalHours=(b.hoursH||0)+(b.hoursM||0)/60;
+        const weights=workedDays.map(dk=>dk<"2026-03-01"?1.5:1.0);
+        const totalWeight=weights.reduce((a,w)=>a+w,0);
+        const distribute=(total,round=true)=>workedDays.map((_,i)=>{const val=(total*weights[i])/totalWeight;return round?Math.round(val):Math.round(val*10)/10;});
+        const contactDist=distribute(b.contacts||0);
+        const hoursDist=distribute(totalHours,false);
+        const apptSetDist=distribute(b.apptSet||0);
+        const apptGoneDist=distribute(b.apptGoneOn||0);
+        const listingsTakenDist=distribute(b.listingsTaken||0);
+        const listingsSoldDist=distribute(b.listingsSold||0);
+        const buyerSalesDist=distribute(b.buyerSales||0);
+        const newDays={...s.days};
+        workedDays.forEach((dk,i)=>{
+          if(!newDays[dk]){
+            const hNum=hoursDist[i];const hh=Math.floor(hNum);const mm=Math.round((hNum-hh)*60);
+            const hoursVal=hh+":"+(mm<30?"00":"30");
+            const validHours=HOURS_OPTS.includes(hoursVal)?hoursVal:hh+":00";
+            newDays[dk]={worked:true,hours:validHours,contacts:contactDist[i],apptSet:apptSetDist[i],apptGoneOn:apptGoneDist[i],apptTurnedDown:0,listingsTaken:listingsTakenDist[i],buyerContract:0,listingsSold:listingsSoldDist[i],buyerSales:buyerSalesDist[i]};
+          }
+        });
+        s.days=newDays;s.daysSeeded=true;
+        try{localStorage.setItem(STORAGE_KEY,JSON.stringify(s));}catch(e){}
+      }
+    }
+    setState(s);
+  },[]);
+
+  const save=useCallback((s)=>{try{localStorage.setItem(STORAGE_KEY,JSON.stringify(s));}catch(e){}setState(s);},[]);
+
+  if(!state)return React.createElement('div',{style:{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",fontSize:20,fontWeight:700,color:LBLUE}},"Loading...");
+
+  const g=state.goals;
+  function getYtd(){
+    const b=state.ytdBaseline;
+    const t={dials:b.dials||0,contacts:b.contacts||0,apptSet:b.apptSet||0,leads:b.leads||0,hours:(b.hoursH||0)+(b.hoursM||0)/60,coi:b.coi||0,buyerAppts:b.buyerAppts||0,apptGoneOn:b.apptGoneOn||0,apptTurnedDown:b.apptTurnedDown||0,listingsTaken:b.listingsTaken||0,buyerContract:b.buyerContract||0,listingsSold:b.listingsSold||0,buyerSales:b.buyerSales||0,workedDays:b.workedDays||0};
+    Object.entries(state.days||{}).forEach(([dk,w])=>{
+      if(dk>="2026-05-01"){
+        if(w.worked)t.workedDays++;
+        t.contacts+=w.contacts||0;t.apptSet+=w.apptSet||0;t.hours+=hoursToNum(w.hours);t.apptGoneOn+=w.apptGoneOn||0;t.apptTurnedDown+=w.apptTurnedDown||0;t.listingsTaken+=w.listingsTaken||0;t.buyerContract+=w.buyerContract||0;t.listingsSold+=w.listingsSold||0;t.buyerSales+=w.buyerSales||0;
+      }
+    });
+    return t;
+  }
+  const ytd=getYtd();
+  const totalClosings=ytd.listingsSold+ytd.buyerSales;
+  const paidIncome=state.contracts.filter(c=>c.status==="Settled"&&c.paidDate?.startsWith("2026")).reduce((a,c)=>a+(c.net||0),0);
+  const activeListings=state.contracts.filter(c=>c.status==="Active");
+  const pendingDeals=state.contracts.filter(c=>c.status==="Pending");
+  const activeComm=activeListings.reduce((a,c)=>a+(c.net||0),0);
+  const pendingComm=pendingDeals.reduce((a,c)=>a+(c.net||0),0);
+
+  const R={
+    hoursPerDay:ytd.workedDays>0?ytd.hours/ytd.workedDays:0,
+    contactsPerDay:ytd.workedDays>0?ytd.contacts/ytd.workedDays:0,
+    contactsPerHour:ytd.hours>0?ytd.contacts/ytd.hours:0,
+    hoursPerAppt:ytd.apptSet>0?ytd.hours/ytd.apptSet:0,
+    hoursPerListingTaken:ytd.listingsTaken>0?ytd.hours/ytd.listingsTaken:0,
+    contactsPerAppt:ytd.apptSet>0?ytd.contacts/ytd.apptSet:0,
+    contactsPerListingTaken:ytd.listingsTaken>0?ytd.contacts/ytd.listingsTaken:0,
+    listingsPctOnAppts:ytd.apptGoneOn>0?(ytd.listingsTaken/ytd.apptGoneOn)*100:0,
+    listingsPerClosing:totalClosings>0?ytd.listingsTaken/totalClosings:0,
+    incomePerContact:ytd.contacts>0?paidIncome/ytd.contacts:0,
+    incomePerHour:ytd.hours>0?paidIncome/ytd.hours:0,
+    incomePerClosing:totalClosings>0?paidIncome/totalClosings:0,
+  };
+  const GR={
+    hoursPerDay:g.hoursProspected/(g.workedDays||1),contactsPerDay:g.contacts/(g.workedDays||1),
+    contactsPerHour:g.contacts/(g.hoursProspected||1),hoursPerAppt:g.hoursProspected/(g.apptSet||1),
+    hoursPerListingTaken:g.hoursProspected/(g.listingsTaken||1),contactsPerAppt:g.contacts/(g.apptSet||1),
+    contactsPerListingTaken:g.contacts/(g.listingsTaken||1),
+    listingsPctOnAppts:g.apptGoneOn>0?(g.listingsTaken/g.apptGoneOn)*100:0,
+    listingsPerClosing:(g.listingsSold+g.buyerSales)>0?g.listingsTaken/(g.listingsSold+g.buyerSales):0,
+    incomePerContact:g.income/(g.contacts||1),incomePerHour:g.income/(g.hoursProspected||1),
+    incomePerClosing:g.income/((g.listingsSold+g.buyerSales)||1),
+  };
+
+  const f1=n=>typeof n==="number"?n.toFixed(1):"—";
+  const f2=n=>typeof n==="number"?n.toFixed(2):"—";
+  const fd=n=>"$"+(Math.round(n)||0).toLocaleString();
+  const pct=(a,b)=>b>0?Math.min((a/b)*100,100):0;
+  const hrsLabel=h=>{const hh=Math.floor(h),mm=Math.round((h-hh)*60);return hh+"h "+(mm<10?"0":"")+mm+"m";};
+  function rc(actual,goal,higher=true){if(!goal)return"#6b7280";return(higher?actual>=goal:actual<=goal)?"#10b981":"#ef4444";}
+
+  const monthlyEarnings=Array.from({length:12},(_,mi)=>state.contracts.filter(c=>c.paidDate&&new Date(c.paidDate).getMonth()===mi&&c.paidDate.startsWith("2026")).reduce((a,c)=>a+(c.net||0),0));
+  const maxEarning=Math.max(...monthlyEarnings,1);
+  const months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+  const carouselSlides=[
+    <div key="s1" style={{display:"flex",gap:32,flexWrap:"wrap"}}>
+      {[["Hours Prospected",hrsLabel(ytd.hours)],["Leads",ytd.leads],["Contacts",ytd.contacts.toLocaleString()],["Appts Set",ytd.apptSet]].map(([l,v])=>(
+        <div key={l}><div style={{fontSize:12,color:"rgba(255,255,255,0.7)",marginBottom:4}}>{l}</div><div style={{fontSize:28,fontWeight:800,color:"#fff"}}>{v}</div></div>
+      ))}
+    </div>,
+    <div key="s2" style={{display:"flex",gap:32,flexWrap:"wrap"}}>
+      {[["Dials YTD",(ytd.dials||0).toLocaleString()],["Contacts/Hr",f1(R.contactsPerHour)],["Listing %",f1(R.listingsPctOnAppts)+"%"],["Income/Hr",fd(R.incomePerHour)]].map(([l,v])=>(
+        <div key={l}><div style={{fontSize:12,color:"rgba(255,255,255,0.7)",marginBottom:4}}>{l}</div><div style={{fontSize:28,fontWeight:800,color:"#fff"}}>{v}</div></div>
+      ))}
+    </div>,
+  ];
+
+  function renderDashboard(){
+    const latestPaid=[...state.contracts].filter(c=>c.paidDate?.startsWith("2026")).sort((a,b)=>b.paidDate.localeCompare(a.paidDate))[0];
+    return(
+      <div style={{padding:"20px 24px"}}>
+        <div style={{display:"flex",gap:16,marginBottom:20,flexWrap:"wrap"}}>
+          <div style={{flex:"2 1 340px",background:"linear-gradient(135deg,#3730a3,#4f46e5)",borderRadius:16,padding:"20px 24px",position:"relative"}}>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:12}}>
+              <span style={{color:"#fff",fontWeight:700}}>📊 Current Year Stats</span>
+              <span style={{color:"rgba(255,255,255,0.6)",fontSize:12}}>Prospecting</span>
+            </div>
+            {carouselSlides[carouselIdx]}
+            <div style={{display:"flex",gap:6,marginTop:14}}>
+              {carouselSlides.map((_,i)=><div key={i} onClick={()=>setCarouselIdx(i)} style={{width:i===carouselIdx?24:8,height:8,borderRadius:4,background:i===carouselIdx?"#fff":"rgba(255,255,255,0.3)",cursor:"pointer",transition:"width 0.3s"}}/>)}
+            </div>
+          </div>
+          <div style={{flex:"1 1 130px",background:"linear-gradient(135deg,#7c3aed,#a78bfa)",borderRadius:16,padding:16,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+            <div style={{fontSize:24}}>📅</div><div style={{fontSize:32,fontWeight:900,color:"#fff"}}>{ytd.workedDays}</div>
+            <div style={{fontSize:11,color:"rgba(255,255,255,0.8)"}}>Days Worked</div>
+          </div>
+          <div style={{flex:"1 1 130px",background:"linear-gradient(135deg,#059669,#34d399)",borderRadius:16,padding:16,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+            <div style={{fontSize:24}}>🏠</div><div style={{fontSize:32,fontWeight:900,color:"#fff"}}>{ytd.listingsTaken}</div>
+            <div style={{fontSize:11,color:"rgba(255,255,255,0.8)"}}>Listings Taken</div>
+          </div>
+          <div style={{flex:"1 1 130px",background:"linear-gradient(135deg,#d97706,#fbbf24)",borderRadius:16,padding:16,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+            <div style={{fontSize:22,fontWeight:900,color:"#fff"}}>{latestPaid?fd(latestPaid.net):"—"}</div>
+            <div style={{fontSize:11,color:"rgba(255,255,255,0.8)"}}>{latestPaid?latestPaid.paidDate:"Latest Paid"}</div>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:16,flexWrap:"wrap",marginBottom:20}}>
+          <div style={{flex:"1 1 300px",background:"#fff",borderRadius:12,boxShadow:"0 1px 6px rgba(0,0,0,0.08)",overflow:"hidden"}}>
+            <div style={{padding:"12px 16px",fontWeight:700,color:"#1e293b"}}>Current Results</div>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+              <thead><tr style={{background:BLUE,color:"#fff"}}><th style={{padding:"8px 16px",textAlign:"left"}}>ITEM</th><th style={{padding:"8px 16px",textAlign:"right"}}>STATS</th></tr></thead>
+              <tbody>
+                {[["Active Listings",activeListings.length],["Active Commission",fd(activeComm)],["Pending Deals",pendingDeals.length],["Pending Commission",fd(pendingComm)],["Closed/Paid 2026",state.contracts.filter(c=>c.status==="Settled"&&c.paidDate?.startsWith("2026")).length],["Paid Income",fd(paidIncome)],["Total Hours on Phones",hrsLabel(ytd.hours)]].map(([l,v],i)=>(
+                  <tr key={l} style={{background:i%2===0?"#f8fafc":"#fff",borderBottom:"1px solid #f1f5f9"}}>
+                    <td style={{padding:"7px 16px",color:"#374151"}}>{l}</td><td style={{padding:"7px 16px",textAlign:"right",fontWeight:600}}>{v}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div style={{flex:"1 1 280px",background:"#fff",borderRadius:12,boxShadow:"0 1px 6px rgba(0,0,0,0.08)",padding:18}}>
+            <div style={{fontWeight:700,color:"#1e293b",marginBottom:4}}>Earning Reports</div>
+            <div style={{fontSize:12,color:"#6b7280",marginBottom:14}}>Yearly Earnings Overview</div>
+            <div style={{display:"flex",alignItems:"flex-end",gap:5,height:110}}>
+              {monthlyEarnings.map((v,i)=>(
+                <div key={i} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+                  <div style={{width:"100%",background:v>0?"#10b981":"#e2e8f0",borderRadius:"3px 3px 0 0",height:Math.max((v/maxEarning)*95,v>0?4:0)+"px"}}/>
+                  <div style={{fontSize:8,color:"#9ca3af"}}>{months[i]}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{marginTop:14}}>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:"#6b7280",marginBottom:4}}>
+                <span>Income to Goal</span><span>{fd(paidIncome)} / {fd(g.income)}</span>
+              </div>
+              <div style={{background:"#e2e8f0",borderRadius:20,height:10,overflow:"hidden"}}>
+                <div style={{width:pct(paidIncome,g.income)+"%",height:"100%",background:"linear-gradient(90deg,#3730a3,#4f46e5)",borderRadius:20}}/>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style={{background:"#fff",borderRadius:12,boxShadow:"0 1px 6px rgba(0,0,0,0.08)",padding:18}}>
+          <div style={{fontWeight:700,color:"#1e293b",marginBottom:10}}>Contracts By Status</div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {CONTRACT_STATUSES.map(s=>{const count=state.contracts.filter(c=>c.status===s).length;if(!count)return null;return<div key={s} style={{background:STATUS_COLORS[s]||"#6b7280",color:"#fff",borderRadius:8,padding:"6px 14px",fontSize:13,fontWeight:600}}>{s}: {count}</div>;})}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderReportNumbers(){
+    function shiftDay(dir){const d=new Date(selectedDate+"T12:00:00");d.setDate(d.getDate()+dir);setSelectedDate(d.toISOString().slice(0,10));}
+    const today=new Date().toISOString().slice(0,10);
+    const isToday=selectedDate===today;
+    const dayData=(state.days||{})[selectedDate]||emptyWeek();
+    function updateDayCell(key,val){const nd={...(state.days||{}),[selectedDate]:{...dayData,[key]:val}};save({...state,days:nd});}
+    const highlight=["contacts","hours","apptSet","listingsTaken"];
+    const goalMap={contacts:(g.contacts/(g.workedDays||1)).toFixed(1),hours:(g.hoursProspected/(g.workedDays||1)).toFixed(2),apptSet:(g.apptSet/52/5).toFixed(2),listingsTaken:(g.listingsTaken/52/5).toFixed(2)};
+    const d=new Date(selectedDate+"T12:00:00");
+    const dayLabel=d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"});
+    const weekStart=new Date(selectedDate+"T12:00:00");
+    const dow=weekStart.getDay();weekStart.setDate(weekStart.getDate()+(dow===0?-6:1-dow));
+    const weekDays=Array.from({length:7},(_,i)=>{const wd=new Date(weekStart);wd.setDate(wd.getDate()+i);return wd.toISOString().slice(0,10);});
+    const weekTotals={};
+    WEEK_ROWS.forEach(r=>{
+      if(r.type==="check")weekTotals[r.key]=weekDays.filter(dk=>(state.days||{})[dk]?.[r.key]).length;
+      else if(r.type==="hours")weekTotals[r.key]=weekDays.reduce((a,dk)=>a+hoursToNum(((state.days||{})[dk]||{})[r.key]||"0:00"),0);
+      else weekTotals[r.key]=weekDays.reduce((a,dk)=>a+(((state.days||{})[dk]||{})[r.key]||0),0);
+    });
+    return(
+      <div style={{padding:"20px 24px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}>
+          <h2 style={{margin:0,color:"#1e293b",fontSize:20,fontWeight:700}}>Report Numbers</h2><div style={{flex:1}}/>
+          <button onClick={()=>shiftDay(-1)} style={{padding:"7px 16px",borderRadius:8,border:"2px solid #3730a3",color:"#3730a3",background:"#fff",cursor:"pointer",fontWeight:600}}>← Prev</button>
+          <div style={{textAlign:"center",minWidth:200}}><div style={{color:"#3730a3",fontWeight:700,fontSize:14}}>{dayLabel}</div>{isToday&&<div style={{fontSize:11,color:"#10b981",fontWeight:600}}>Today</div>}</div>
+          <button onClick={()=>shiftDay(1)} style={{padding:"7px 16px",borderRadius:8,border:"none",background:"#3730a3",color:"#fff",cursor:"pointer",fontWeight:600}}>Next →</button>
+          {!isToday&&<button onClick={()=>setSelectedDate(today)} style={{padding:"7px 12px",borderRadius:8,border:"1px solid #e2e8f0",background:"#fff",cursor:"pointer",fontSize:12,color:"#6b7280"}}>Today</button>}
+        </div>
+        <div style={{background:"#fff",borderRadius:12,boxShadow:"0 1px 6px rgba(0,0,0,0.08)",overflow:"hidden",marginBottom:16}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+            <thead><tr style={{background:BLUE,color:"#fff"}}>
+              <th style={{padding:"10px 14px",textAlign:"left",width:240}}>ITEM</th>
+              <th style={{padding:"10px 14px",textAlign:"center",width:110}}>DAILY GOAL</th>
+              <th style={{padding:"10px 14px",textAlign:"center"}}>TODAY'S ENTRY</th>
+            </tr></thead>
+            <tbody>
+              {WEEK_ROWS.map((r,i)=>(
+                <tr key={r.key} style={{background:i%2===0?"#f8fafc":"#fff",borderBottom:"1px solid #e2e8f0"}}>
+                  <td style={{padding:"9px 14px",fontWeight:500,color:highlight.includes(r.key)?"#3730a3":"#374151"}}>{r.label}</td>
+                  <td style={{padding:"9px 14px",textAlign:"center",color:"#6b7280",fontSize:12}}>{goalMap[r.key]||"—"}</td>
+                  <td style={{padding:"9px 14px",textAlign:"center"}}>
+                    {r.type==="check"?<input type="checkbox" checked={dayData[r.key]||false} onChange={e=>updateDayCell(r.key,e.target.checked)} style={{width:20,height:20,accentColor:BLUE,cursor:"pointer"}}/>
+                    :r.type==="hours"?<select value={dayData[r.key]||"0:00"} onChange={e=>updateDayCell(r.key,e.target.value)} style={{border:"1px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontSize:13}}>{HOURS_OPTS.map(o=><option key={o}>{o}</option>)}</select>
+                    :<div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+                      <button onClick={()=>updateDayCell(r.key,Math.max(0,(dayData[r.key]||0)-1))} style={{width:28,height:28,borderRadius:"50%",border:"1px solid #e2e8f0",background:"#f1f5f9",cursor:"pointer",fontSize:18,fontWeight:700}}>−</button>
+                      <input type="number" min="0" value={dayData[r.key]||""} placeholder="0" onChange={e=>updateDayCell(r.key,parseInt(e.target.value)||0)} style={{width:64,border:"1px solid #e2e8f0",borderRadius:6,padding:"5px 6px",textAlign:"center",fontSize:15,fontWeight:700}}/>
+                      <button onClick={()=>updateDayCell(r.key,(dayData[r.key]||0)+1)} style={{width:28,height:28,borderRadius:"50%",border:"1px solid #e2e8f0",background:"#f1f5f9",cursor:"pointer",fontSize:18,color:"#3730a3",fontWeight:700}}>+</button>
+                    </div>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div style={{background:"#fff",borderRadius:12,boxShadow:"0 1px 6px rgba(0,0,0,0.08)",overflow:"hidden"}}>
+          <div style={{padding:"10px 14px",fontWeight:700,fontSize:13,color:"#374151",borderBottom:"1px solid #e2e8f0",background:"#f8fafc"}}>This Week's Summary</div>
+          <div style={{overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:600}}>
+              <thead><tr style={{background:BLUE,color:"#fff"}}>
+                <th style={{padding:"8px 14px",textAlign:"left"}}>ITEM</th>
+                {weekDays.map(dk=>{const wd=new Date(dk+"T12:00:00");return<th key={dk} onClick={()=>setSelectedDate(dk)} style={{padding:"8px 6px",textAlign:"center",fontSize:11,background:dk===selectedDate?"#4f46e5":BLUE,cursor:"pointer"}}>{wd.toLocaleDateString("en-US",{weekday:"short"})}<br/>{wd.toLocaleDateString("en-US",{month:"numeric",day:"numeric"})}</th>;})}
+                <th style={{padding:"8px 10px",textAlign:"center",background:"#1e1b4b"}}>TOTAL</th>
+              </tr></thead>
+              <tbody>
+                {WEEK_ROWS.map((r,i)=>(
+                  <tr key={r.key} style={{background:i%2===0?"#f8fafc":"#fff",borderBottom:"1px solid #e2e8f0"}}>
+                    <td style={{padding:"7px 14px",fontWeight:500,color:highlight.includes(r.key)?"#3730a3":"#374151"}}>{r.label}</td>
+                    {weekDays.map(dk=>{const dv=((state.days||{})[dk]||{})[r.key];const disp=r.type==="check"?(dv?<span style={{color:"#10b981",fontWeight:700}}>✓</span>:"—"):r.type==="hours"?(hoursToNum(dv||"0:00")>0?dv:"—"):(dv||"—");return<td key={dk} onClick={()=>setSelectedDate(dk)} style={{padding:"7px 6px",textAlign:"center",color:"#6b7280",background:dk===selectedDate?"#eff6ff":"",cursor:"pointer"}}>{disp}</td>;})}
+                    <td style={{padding:"7px 10px",textAlign:"center",fontWeight:700,color:"#1e293b"}}>{r.type==="check"?weekTotals[r.key]:r.type==="hours"?numToHours(weekTotals[r.key]):weekTotals[r.key]||0}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderMyReports(){
+    const today=new Date();const yearStart=new Date("2026-01-01");const yearEnd=new Date("2026-12-31");
+    const totalDays=(yearEnd-yearStart)/(24*3600*1000);
+    const elapsedDays=Math.min((today-yearStart)/(24*3600*1000),totalDays);
+    const remainingDays=Math.max(0,totalDays-elapsedDays);
+    const project=a=>{if(!elapsedDays)return a;return Math.round(a+(a/elapsedDays)*remainingDays);};
+    const shouldBe=goal=>Math.round(goal*(elapsedDays/totalDays));
+    const rows=[
+      {label:"Worked",goal:g.workedDays,actual:ytd.workedDays,onTrack:project(ytd.workedDays),shouldBe:shouldBe(g.workedDays),higher:true},
+      {label:"Hours Prospected",goal:g.hoursProspected,actual:Math.round(ytd.hours*10)/10,onTrack:Math.round((ytd.hours+(ytd.hours/elapsedDays)*remainingDays)*10)/10,shouldBe:Math.round(g.hoursProspected*(elapsedDays/totalDays)*10)/10,higher:true},
+      {label:"Contacts",goal:g.contacts,actual:ytd.contacts,onTrack:project(ytd.contacts),shouldBe:shouldBe(g.contacts),higher:true},
+      {label:"Listing Appointments Set",goal:g.apptSet,actual:ytd.apptSet,onTrack:project(ytd.apptSet),shouldBe:shouldBe(g.apptSet),higher:true},
+      {label:"Listing Appointments Gone On",goal:g.apptGoneOn,actual:ytd.apptGoneOn,onTrack:project(ytd.apptGoneOn),shouldBe:shouldBe(g.apptGoneOn),higher:true},
+      {label:"Listing Appts Turned Down",goal:"—",actual:ytd.apptTurnedDown,onTrack:"—",shouldBe:"—",higher:false},
+      {label:"Listings Taken",goal:g.listingsTaken,actual:ytd.listingsTaken,onTrack:project(ytd.listingsTaken),shouldBe:shouldBe(g.listingsTaken),higher:true},
+      {label:"Buyers Contract",goal:"—",actual:ytd.buyerContract,onTrack:"—",shouldBe:"—",higher:true},
+      {label:"Listings Sold",goal:g.listingsSold,actual:ytd.listingsSold,onTrack:project(ytd.listingsSold),shouldBe:shouldBe(g.listingsSold),higher:true},
+      {label:"Buyer Sales",goal:g.buyerSales,actual:ytd.buyerSales,onTrack:project(ytd.buyerSales),shouldBe:shouldBe(g.buyerSales),higher:true},
+      {label:"Paid Income",goal:g.income,actual:paidIncome,onTrack:project(paidIncome),shouldBe:shouldBe(g.income),higher:true,dollar:true},
+    ];
+    const fv=(v,dollar)=>{if(typeof v!=="number")return v;if(dollar)return"$"+Math.round(v).toLocaleString();return v.toLocaleString();};
+    return(
+      <div style={{padding:"20px 24px"}}>
+        <h2 style={{margin:"0 0 4px",color:"#1e293b",fontSize:20,fontWeight:700}}>My Reports (2026) — Prospecting / Contracts</h2>
+        <div style={{margin:"0 0 14px",fontSize:12,color:"#6b7280"}}>📅 Tracking through <strong>December 31, 2026</strong> &nbsp;|&nbsp; Days elapsed: <strong>{Math.round(elapsedDays)}</strong> of <strong>365</strong></div>
+        <div style={{background:"#fff",borderRadius:12,boxShadow:"0 1px 6px rgba(0,0,0,0.08)",overflow:"hidden"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+            <thead><tr style={{background:BLUE,color:"#fff"}}>{["","GOAL","ON TRACK FOR","SHOULD BE (YTD)","ACTUAL (YTD)"].map(h=><th key={h} style={{padding:"10px 14px",textAlign:h===""?"left":"center"}}>{h}</th>)}</tr></thead>
+            <tbody>
+              {rows.map((r,i)=>{
+                const a=typeof r.actual==="number"?r.actual:0;const go=typeof r.goal==="number"?r.goal:null;
+                const ac=go===null?"#374151":(r.higher?(a>=go?"#10b981":"#ef4444"):(a<=go?"#10b981":"#ef4444"));
+                const oc=go===null?"#374151":(r.higher?(r.onTrack>=go?"#10b981":"#ef4444"):"#374151");
+                return<tr key={r.label} style={{background:i%2===0?"#f8fafc":"#fff",borderBottom:"1px solid #e2e8f0"}}>
+                  <td style={{padding:"8px 14px",fontWeight:500,color:"#374151"}}>{r.label}</td>
+                  <td style={{padding:"8px 14px",textAlign:"center",color:"#6b7280"}}>{fv(r.goal,r.dollar)}</td>
+                  <td style={{padding:"8px 14px",textAlign:"center",fontWeight:600,color:oc}}>{fv(r.onTrack,r.dollar)}</td>
+                  <td style={{padding:"8px 14px",textAlign:"center",color:"#6b7280"}}>{fv(r.shouldBe,r.dollar)}</td>
+                  <td style={{padding:"8px 14px",textAlign:"center",fontWeight:700,color:ac}}>{fv(r.actual,r.dollar)}</td>
+                </tr>;
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
+  function renderMyRatios(){
+    const leftTable=[
+      {label:"Hours Prospected Per Day",goal:GR.hoursPerDay,actual:R.hoursPerDay,fmt:v=>f2(v),higher:true},
+      {label:"Contacts Per Day",goal:GR.contactsPerDay,actual:R.contactsPerDay,fmt:v=>f1(v),higher:true},
+      {label:"Contacts Per Hour",goal:GR.contactsPerHour,actual:R.contactsPerHour,fmt:v=>f2(v),higher:true},
+      {label:"Hours per Listing Appointment",goal:GR.hoursPerAppt,actual:R.hoursPerAppt,fmt:v=>f2(v),higher:false},
+      {label:"Hours per Listing Taken",goal:GR.hoursPerListingTaken,actual:R.hoursPerListingTaken,fmt:v=>f2(v),higher:false},
+      {label:"Contacts per Listing Appointment",goal:GR.contactsPerAppt,actual:R.contactsPerAppt,fmt:v=>f2(v),higher:false},
+    ];
+    const rightTable=[
+      {label:"Contacts Per Listing Taken",goal:GR.contactsPerListingTaken,actual:R.contactsPerListingTaken,fmt:v=>f2(v),higher:false},
+      {label:"Listings Taken per Deal Closed",goal:GR.listingsPerClosing,actual:R.listingsPerClosing,fmt:v=>f2(v),higher:false},
+      {label:"Listing Percentage on Appointments",goal:GR.listingsPctOnAppts,actual:R.listingsPctOnAppts,fmt:v=>f1(v)+"%",higher:true},
+      {label:"Income per Contact",goal:GR.incomePerContact,actual:R.incomePerContact,fmt:fd,higher:true},
+      {label:"Income per Hour Prospected",goal:GR.incomePerHour,actual:R.incomePerHour,fmt:fd,higher:true},
+      {label:"Income per Closed",goal:GR.incomePerClosing,actual:R.incomePerClosing,fmt:fd,higher:true},
+    ];
+    const rTbl=rows=><table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
+      <thead><tr style={{background:BLUE,color:"#fff"}}><th style={{padding:"9px 12px",textAlign:"left"}}>ITEM</th><th style={{padding:"9px 12px",textAlign:"center"}}>GOAL</th><th style={{padding:"9px 12px",textAlign:"center"}}>ACTUAL</th></tr></thead>
+      <tbody>{rows.map((r,i)=>{const color=r.higher?(r.actual>=r.goal?"#10b981":"#ef4444"):(r.actual<=r.goal?"#10b981":"#ef4444");return<tr key={r.label} style={{background:i%2===0?"#f8fafc":"#fff",borderBottom:"1px solid #e2e8f0"}}><td style={{padding:"9px 12px",color:"#374151"}}>{r.label}</td><td style={{padding:"9px 12px",textAlign:"center",color:"#6b7280"}}>{r.fmt(r.goal)}</td><td style={{padding:"9px 12px",textAlign:"center",fontWeight:700,color}}>{r.fmt(r.actual)}</td></tr>;})}
+      </tbody>
+    </table>;
+    const onTrackItems=[{label:"Contacts",actual:ytd.contacts,goal:g.contacts},{label:"Appts Set",actual:ytd.apptSet,goal:g.apptSet},{label:"Listings Taken",actual:ytd.listingsTaken,goal:g.listingsTaken},{label:"Listings Sold",actual:ytd.listingsSold,goal:g.listingsSold},{label:"Income",actual:paidIncome,goal:g.income,dollar:true}];
+    const mo=new Date().getMonth()+1;
+    return(
+      <div style={{padding:"20px 24px"}}>
+        <h2 style={{margin:"0 0 16px",color:"#1e293b",fontSize:20,fontWeight:700}}>My Ratios (2026)</h2>
+        <div style={{display:"flex",gap:16,marginBottom:20,flexWrap:"wrap"}}>
+          <div style={{flex:"1 1 300px",background:"#fff",borderRadius:12,boxShadow:"0 1px 6px rgba(0,0,0,0.08)",overflow:"hidden"}}>{rTbl(leftTable)}</div>
+          <div style={{flex:"1 1 300px",background:"#fff",borderRadius:12,boxShadow:"0 1px 6px rgba(0,0,0,0.08)",overflow:"hidden"}}>{rTbl(rightTable)}</div>
+        </div>
+        <div style={{background:"#fff",borderRadius:12,boxShadow:"0 1px 6px rgba(0,0,0,0.08)",padding:18}}>
+          <div style={{fontWeight:700,fontSize:15,color:"#1e293b",marginBottom:14}}>On Track For</div>
+          {onTrackItems.map(item=>{const otf=mo>0?(item.actual/mo)*12:0;const p=pct(otf,item.goal);return<div key={item.label} style={{marginBottom:12}}>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:12,color:"#6b7280",marginBottom:4}}><span>{item.label}</span><span style={{fontWeight:600,color:"#374151"}}>{item.dollar?fd(otf):Math.round(otf).toLocaleString()} / {item.dollar?fd(item.goal):item.goal.toLocaleString()} ({p.toFixed(1)}%)</span></div>
+            <div style={{background:"#e2e8f0",borderRadius:20,height:10,overflow:"hidden"}}><div style={{width:p+"%",height:"100%",background:p>=80?"#10b981":p>=50?"#f59e0b":"#ef4444",borderRadius:20}}/></div>
+          </div>;})}
+        </div>
+      </div>
+    );
+  }
+
+  function renderBusinessPlan(){
+    const closingsDone=totalClosings;const closingsNeeded=Math.max(0,(g.transactions||45)-closingsDone);
+    const incomeDone=paidIncome;const incomeNeeded=Math.max(0,g.income-incomeDone);
+    const totalWorkingDays=245;const leaveDays=22;const effectiveWorkingDays=totalWorkingDays-leaveDays;
+    const daysWorkedSoFar=ytd.workedDays||88;const sprintDays=Math.max(1,effectiveWorkingDays-daysWorkedSoFar);
+    const avgNet=paidIncome>0&&totalClosings>0?paidIncome/totalClosings:g.avgCommission;
+    const listingRate=ytd.apptGoneOn>0?ytd.listingsTaken/ytd.apptGoneOn:0.73;
+    const showRate=ytd.apptSet>0?ytd.apptGoneOn/ytd.apptSet:0.57;
+    const contactsPerAppt=ytd.apptSet>0?ytd.contacts/ytd.apptSet:57;
+    const contactsPerHour=ytd.hours>0?ytd.contacts/ytd.hours:8.7;
+    const listingsNeeded=Math.ceil(closingsNeeded*1.1);
+    const apptsGoneOnNeeded=listingRate>0?Math.ceil(listingsNeeded/listingRate):0;
+    const apptsSetNeeded=showRate>0?Math.ceil(apptsGoneOnNeeded/showRate):0;
+    const contactsNeeded=Math.ceil(apptsSetNeeded*contactsPerAppt);
+    const hoursNeeded=contactsPerHour>0?Math.ceil(contactsNeeded/contactsPerHour):0;
+    const contactsPerDay=(contactsNeeded/sprintDays).toFixed(1);
+    const hoursPerDay=(hoursNeeded/sprintDays).toFixed(2);
+    const apptsPerWeek=((apptsSetNeeded/sprintDays)*5).toFixed(1);
+    const fields=[{key:"workedDays",label:"Days Worked Per Year"},{key:"hoursProspected",label:"Hours Prospected Per Year"},{key:"contacts",label:"Total Contacts"},{key:"apptSet",label:"Listing Appointments Set"},{key:"apptGoneOn",label:"Listing Appointments Gone On"},{key:"listingsTaken",label:"Listings Taken"},{key:"listingsSold",label:"Listings Sold"},{key:"buyerSales",label:"Buyer Sales"},{key:"avgCommission",label:"Average Commission ($)"},{key:"income",label:"Income Goal ($)"},{key:"transactions",label:"Transaction Goal"}];
+    const autoRatios=[{label:"Hours Prospected Per Day",val:(g.hoursProspected/(g.workedDays||1)).toFixed(2)},{label:"Contacts Per Day",val:(g.contacts/(g.workedDays||1)).toFixed(1)},{label:"Contacts Per Hour",val:(g.contacts/(g.hoursProspected||1)).toFixed(2)},{label:"Hours per Listing Appointment",val:(g.hoursProspected/(g.apptSet||1)).toFixed(2)},{label:"Contacts Per Listing Taken",val:(g.contacts/(g.listingsTaken||1)).toFixed(2)},{label:"Hours per Listing Taken",val:(g.hoursProspected/(g.listingsTaken||1)).toFixed(2)},{label:"Listing / Appointments Ratio",val:(g.listingsTaken/(g.apptGoneOn||1)).toFixed(2)},{label:"Income per Hour Prospected",val:"$"+Math.round(g.income/(g.hoursProspected||1)).toLocaleString()}];
+    return(
+      <div style={{padding:"20px 24px"}}>
+        <h2 style={{margin:"0 0 16px",color:"#1e293b",fontSize:20,fontWeight:700}}>Business Plan — 2026</h2>
+        <div style={{background:"linear-gradient(135deg,#1e1b4b,#3730a3)",borderRadius:12,padding:"16px 20px",marginBottom:20,color:"#fff"}}>
+          <div style={{fontWeight:800,fontSize:15,marginBottom:10}}>🎯 What You Need to Hit {g.transactions} Closings</div>
+          <div style={{display:"flex",gap:20,flexWrap:"wrap"}}>
+            {[["Done",closingsDone],["Still Need",closingsNeeded],["Working Days Left",sprintDays],["Listings to Take",listingsNeeded],["Appts to Set",apptsSetNeeded],["Contacts Needed",contactsNeeded.toLocaleString()]].map(([l,v])=>(
+              <div key={l}><div style={{fontSize:11,color:"rgba(255,255,255,0.6)",marginBottom:2}}>{l}</div><div style={{fontSize:22,fontWeight:800}}>{v}</div></div>
+            ))}
+          </div>
+          <div style={{marginTop:14,paddingTop:14,borderTop:"1px solid rgba(255,255,255,0.15)",display:"flex",gap:20,flexWrap:"wrap"}}>
+            {[["Contacts/Day",contactsPerDay],["Hours/Day",hoursPerDay],["Appts/Week",apptsPerWeek],["Avg Net/Closing","$"+Math.round(avgNet).toLocaleString()],["Income Still Needed","$"+Math.round(incomeNeeded).toLocaleString()]].map(([l,v])=>(
+              <div key={l}><div style={{fontSize:11,color:"rgba(255,255,255,0.6)",marginBottom:2}}>{l}</div><div style={{fontSize:18,fontWeight:700,color:"#fbbf24"}}>{v}</div></div>
+            ))}
+          </div>
+          <div style={{marginTop:10,fontSize:11,color:"rgba(255,255,255,0.45)"}}>1 month leave (Oct 15–Nov 15) = ~{leaveDays} days off · Effective working year: {effectiveWorkingDays} days · {daysWorkedSoFar} done · {sprintDays} remaining · Listing rate: {(listingRate*100).toFixed(0)}% · Show rate: {(showRate*100).toFixed(0)}% · {contactsPerAppt.toFixed(0)} contacts/appt</div>
+        </div>
+        <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+          <div style={{flex:"1 1 280px",background:"#fff",borderRadius:12,boxShadow:"0 1px 6px rgba(0,0,0,0.08)",overflow:"hidden"}}>
+            <div style={{background:BLUE,color:"#fff",padding:"10px 16px",display:"flex"}}><div style={{flex:2,fontWeight:700,fontSize:13}}>ITEM</div><div style={{flex:1,fontWeight:700,fontSize:13,textAlign:"right"}}>2026 GOAL</div></div>
+            {fields.map((f,i)=>(
+              <div key={f.key} style={{display:"flex",alignItems:"center",padding:"10px 16px",background:i%2===0?"#f8fafc":"#fff",borderBottom:"1px solid #e2e8f0"}}>
+                <div style={{flex:2,fontSize:13,color:"#374151"}}>{f.label}</div>
+                <input type="number" value={g[f.key]||0} onChange={e=>{const ng={...g,[f.key]:parseInt(e.target.value)||0};save({...state,goals:ng});}} style={{flex:1,border:"1px solid #e2e8f0",borderRadius:8,padding:"6px 10px",fontSize:13,textAlign:"right"}}/>
+              </div>
+            ))}
+          </div>
+          <div style={{flex:"1 1 280px",display:"flex",flexDirection:"column",gap:16}}>
+            <div style={{background:"#fff",borderRadius:12,boxShadow:"0 1px 6px rgba(0,0,0,0.08)",overflow:"hidden"}}>
+              <div style={{background:BLUE,color:"#fff",padding:"10px 16px",fontWeight:700,fontSize:13}}>AUTO-CALCULATED RATIO GOALS</div>
+              {autoRatios.map((r,i)=>(
+                <div key={r.label} style={{display:"flex",justifyContent:"space-between",padding:"10px 16px",background:i%2===0?"#f8fafc":"#fff",borderBottom:"1px solid #e2e8f0",fontSize:13}}>
+                  <span style={{color:"#374151"}}>{r.label}</span><span style={{fontWeight:700,color:LBLUE}}>{r.val}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{background:"#fff",borderRadius:12,boxShadow:"0 1px 6px rgba(0,0,0,0.08)",padding:16}}>
+              <div style={{fontWeight:700,fontSize:13,color:"#1e293b",marginBottom:12}}>📅 2026 Timeline</div>
+              {[{label:"Jan 1 – May 7",note:"Done ✓",sub:closingsDone+" closings · $"+Math.round(incomeDone/1000)+"K earned",color:"#10b981"},{label:"May 7 – Oct 15 + Nov 15 – Dec 31",note:"WORKING 🔥",sub:sprintDays+" remaining days · Need "+closingsNeeded+" more closings",color:"#f59e0b"},{label:"Oct 15 – Nov 15",note:"Baby Leave 👶",sub:"Off — no prospecting",color:"#6b7280"}].map((t,i)=>(
+                <div key={i} style={{display:"flex",alignItems:"flex-start",gap:10,marginBottom:12}}>
+                  <div style={{width:10,height:10,borderRadius:"50%",background:t.color,marginTop:4,flexShrink:0}}/>
+                  <div><div style={{fontWeight:700,fontSize:13,color:"#1e293b"}}>{t.label} <span style={{color:t.color,fontSize:12}}>{t.note}</span></div><div style={{fontSize:12,color:"#6b7280"}}>{t.sub}</div></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderContracts(){
+    const filtered=state.contracts.filter(c=>(cfType==="All"||c.type===cfType)&&(cfStatus==="All"||c.status===cfStatus));
+    const blank={id:"",type:"Listing",status:"Active",address:"",price:0,gross:0,net:0,source:"Expired",pendingDate:"",closedDate:"",paidDate:"",city:"",dom:0};
+    return(
+      <div style={{padding:"20px 24px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,flexWrap:"wrap"}}>
+          <h2 style={{margin:0,color:"#1e293b",fontSize:20,fontWeight:700}}>Manage Contracts</h2><div style={{flex:1}}/>
+          <button onClick={()=>{setEditC({...blank,id:"c"+Date.now()});setShowContract(true);}} style={{padding:"8px 18px",background:LBLUE,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700,fontSize:13}}>+ New Contract</button>
+        </div>
+        <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+          {["All","Listing","Buyer"].map(t=><button key={t} onClick={()=>setCfType(t)} style={{padding:"4px 12px",borderRadius:6,border:"1px solid #e2e8f0",background:cfType===t?BLUE:"#fff",color:cfType===t?"#fff":"#374151",cursor:"pointer",fontSize:12}}>{t}</button>)}
+          <span style={{margin:"0 4px",color:"#e2e8f0"}}>|</span>
+          {["All",...CONTRACT_STATUSES].map(s=><button key={s} onClick={()=>setCfStatus(s)} style={{padding:"4px 10px",borderRadius:6,border:"1px solid #e2e8f0",background:cfStatus===s?BLUE:"#fff",color:cfStatus===s?"#fff":"#374151",cursor:"pointer",fontSize:12,marginBottom:4}}>{s}</button>)}
+        </div>
+        <div style={{background:"#fff",borderRadius:12,boxShadow:"0 1px 6px rgba(0,0,0,0.08)",overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,minWidth:900}}>
+            <thead><tr style={{background:BLUE,color:"#fff"}}>{["ACTION","ADDRESS","TYPE","STATUS","PENDING","CLOSED","PAID","PRICE","NET PAYOUT","GROSS COMM","CITY","SOURCE","DOM"].map(h=><th key={h} style={{padding:"9px 10px",textAlign:"left",whiteSpace:"nowrap",fontSize:11}}>{h}</th>)}</tr></thead>
+            <tbody>
+              {filtered.map((c,i)=>(
+                <tr key={c.id} style={{background:i%2===0?"#f8fafc":"#fff",borderBottom:"1px solid #e2e8f0"}}>
+                  <td style={{padding:"7px 10px",whiteSpace:"nowrap"}}>
+                    <button onClick={()=>{setEditC({...c});setShowContract(true);}} style={{padding:"3px 8px",borderRadius:5,border:"none",background:"#10b981",color:"#fff",cursor:"pointer",fontSize:11,marginRight:4}}>✏️</button>
+                    <button onClick={()=>{if(window.confirm("Delete?"))save({...state,contracts:state.contracts.filter(x=>x.id!==c.id)});}} style={{padding:"3px 8px",borderRadius:5,border:"none",background:"#ef4444",color:"#fff",cursor:"pointer",fontSize:11}}>🗑</button>
+                  </td>
+                  <td style={{padding:"7px 10px",fontWeight:500,maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.address}</td>
+                  <td style={{padding:"7px 10px"}}>{c.type}</td>
+                  <td style={{padding:"7px 10px"}}><span style={{background:STATUS_COLORS[c.status]||"#6b7280",color:"#fff",borderRadius:5,padding:"2px 8px",fontSize:11,fontWeight:600}}>{c.status}</span></td>
+                  <td style={{padding:"7px 10px",color:"#6b7280"}}>{c.pendingDate}</td>
+                  <td style={{padding:"7px 10px",color:"#6b7280"}}>{c.closedDate}</td>
+                  <td style={{padding:"7px 10px",color:"#6b7280"}}>{c.paidDate}</td>
+                  <td style={{padding:"7px 10px"}}>${(c.price||0).toLocaleString()}</td>
+                  <td style={{padding:"7px 10px",color:"#10b981",fontWeight:700}}>{c.paidDate?fd(c.net):"—"}</td>
+                  <td style={{padding:"7px 10px",color:"#6b7280"}}>{fd(c.gross)}</td>
+                  <td style={{padding:"7px 10px"}}>{c.city}</td>
+                  <td style={{padding:"7px 10px"}}>{c.source}</td>
+                  <td style={{padding:"7px 10px"}}>{c.dom||"—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
+  function renderSetSchedule(){
+    const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+    function getDays(m){return new Date(2026,m+1,0).getDate();}
+    function getFirst(m){return new Date(2026,m,1).getDay();}
+    const sched=state.schedule||{};
+    const total=Object.values(sched).filter(Boolean).length;
+    const days=getDays(selMonth),first=getFirst(selMonth);
+    const cells=[];for(let i=0;i<first;i++)cells.push(null);for(let d=1;d<=days;d++)cells.push(d);
+    function toggleDay(ds){save({...state,schedule:{...sched,[ds]:!sched[ds]}});}
+    function setWeekdays(){const ns={...sched};for(let d=1;d<=days;d++){const day=new Date(2026,selMonth,d).getDay();if(day>=1&&day<=5){const ds=`2026-${String(selMonth+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;ns[ds]=true;}}save({...state,schedule:ns});}
+    function addSaturdays(){const ns={...sched};for(let d=1;d<=days;d++){const day=new Date(2026,selMonth,d).getDay();if(day===6){const ds=`2026-${String(selMonth+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;ns[ds]=true;}}save({...state,schedule:ns});}
+    function clearMonth(){const ns={...sched};for(let d=1;d<=days;d++){const ds=`2026-${String(selMonth+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;delete ns[ds];}save({...state,schedule:ns});}
+    return(
+      <div style={{padding:"20px 24px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+          <h2 style={{margin:0,color:"#1e293b",fontSize:20,fontWeight:700}}>Set Schedule — 2026</h2>
+          <span style={{background:LBLUE,color:"#fff",borderRadius:20,padding:"4px 14px",fontSize:13,fontWeight:600}}>{total} days scheduled</span>
+        </div>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16}}>
+          {MONTHS.map((m,i)=><button key={m} onClick={()=>setSelMonth(i)} style={{padding:"6px 12px",borderRadius:8,border:"1px solid #e2e8f0",background:selMonth===i?BLUE:"#fff",color:selMonth===i?"#fff":"#374151",cursor:"pointer",fontSize:12,fontWeight:selMonth===i?700:400}}>{m.slice(0,3)}</button>)}
+        </div>
+        <div style={{background:"#fff",borderRadius:12,boxShadow:"0 1px 6px rgba(0,0,0,0.08)",padding:20}}>
+          <div style={{fontWeight:700,marginBottom:12,color:"#1e293b"}}>{MONTHS[selMonth]} 2026</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:6,marginBottom:12}}>
+            {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d=><div key={d} style={{textAlign:"center",fontSize:11,color:"#6b7280",fontWeight:600,padding:"4px 0"}}>{d}</div>)}
+            {cells.map((d,i)=>{if(!d)return<div key={"e"+i}/>;const ds=`2026-${String(selMonth+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;const on=sched[ds];return<div key={ds} onClick={()=>toggleDay(ds)} style={{textAlign:"center",padding:"10px 4px",borderRadius:8,cursor:"pointer",background:on?BLUE:"#f8fafc",color:on?"#fff":"#374151",border:"1px solid",borderColor:on?BLUE:"#e2e8f0",fontSize:13,fontWeight:on?700:400,userSelect:"none"}}>{d}</div>;})}
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={setWeekdays} style={{padding:"6px 14px",borderRadius:8,border:"1px solid #e2e8f0",cursor:"pointer",fontSize:12,background:"#f8fafc"}}>✓ Weekdays</button>
+            <button onClick={addSaturdays} style={{padding:"6px 14px",borderRadius:8,border:"1px solid #e2e8f0",cursor:"pointer",fontSize:12,background:"#f8fafc"}}>+ Saturdays</button>
+            <button onClick={clearMonth} style={{padding:"6px 14px",borderRadius:8,border:"1px solid #fecaca",cursor:"pointer",fontSize:12,background:"#fef2f2",color:"#dc2626"}}>Clear Month</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderYtdModal(){
+    const f=ytdForm||state.ytdBaseline;
+    const fields=[{key:"dials",label:"Total Dials"},{key:"contacts",label:"Total Contacts"},{key:"apptSet",label:"Appointments Set"},{key:"leads",label:"Leads"},{key:"hoursH",label:"Hours on Phones (hrs)"},{key:"hoursM",label:"Hours on Phones (min)"},{key:"apptGoneOn",label:"Listing Appts Gone On"},{key:"apptTurnedDown",label:"Appts Turned Down"},{key:"listingsTaken",label:"Listings Taken"},{key:"listingsSold",label:"Listings Sold"},{key:"buyerSales",label:"Buyer Sales"},{key:"buyerContract",label:"Buyers Contract"},{key:"workedDays",label:"Days Worked (prior)"}];
+    return(
+      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setShowYtd(false)}>
+        <div style={{background:"#fff",borderRadius:14,padding:24,width:"90%",maxWidth:460,maxHeight:"88vh",overflowY:"auto",boxShadow:"0 8px 32px rgba(0,0,0,0.2)"}} onClick={e=>e.stopPropagation()}>
+          <h3 style={{margin:"0 0 4px",color:"#1e293b"}}>Update YTD Baseline</h3>
+          <p style={{margin:"0 0 16px",fontSize:12,color:"#6b7280"}}>Your Mojo totals. May 1+ daily entries add on top.</p>
+          {fields.map(fi=>(
+            <div key={fi.key} style={{display:"flex",alignItems:"center",marginBottom:10}}>
+              <label style={{flex:1,fontSize:13,color:"#374151"}}>{fi.label}</label>
+              <input type="number" value={f[fi.key]||0} onChange={e=>setYtdForm({...(ytdForm||state.ytdBaseline),[fi.key]:parseInt(e.target.value)||0})} style={{width:100,border:"1px solid #e2e8f0",borderRadius:8,padding:"5px 8px",fontSize:13,textAlign:"right"}}/>
+            </div>
+          ))}
+          <div style={{display:"flex",gap:8,marginTop:18}}>
+            <button onClick={()=>{save({...state,ytdBaseline:{...f}});setShowYtd(false);setYtdForm(null);}} style={{flex:1,padding:"11px",background:LBLUE,color:"#fff",border:"none",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:14}}>Save Baseline</button>
+            <button onClick={()=>{setShowYtd(false);setYtdForm(null);}} style={{padding:"11px 18px",border:"1px solid #e2e8f0",borderRadius:9,cursor:"pointer",fontSize:14}}>Cancel</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderContractModal(){
+    if(!editC)return null;
+    const sourceOpts=["Expired","FSBO","Referral","COI","Past Client","Open House","Other"];
+    return(
+      <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.55)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setShowContract(false)}>
+        <div style={{background:"#fff",borderRadius:14,padding:24,width:"90%",maxWidth:500,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 8px 32px rgba(0,0,0,0.2)"}} onClick={e=>e.stopPropagation()}>
+          <h3 style={{margin:"0 0 16px",color:"#1e293b"}}>Contract</h3>
+          {[{key:"address",label:"Address",type:"text"},{key:"type",label:"Type",type:"select",opts:["Listing","Buyer"]},{key:"status",label:"Status",type:"select",opts:CONTRACT_STATUSES},{key:"city",label:"City",type:"text"},{key:"price",label:"Sale Price",type:"number"},{key:"gross",label:"Gross Commission",type:"number"},{key:"net",label:"Net Payout",type:"number"},{key:"source",label:"Source",type:"select",opts:sourceOpts},{key:"pendingDate",label:"Pending Date",type:"date"},{key:"closedDate",label:"Closing Date",type:"date"},{key:"paidDate",label:"Paid Date",type:"date"},{key:"dom",label:"Days on Market",type:"number"}].map(fi=>(
+            <div key={fi.key} style={{display:"flex",alignItems:"center",marginBottom:10}}>
+              <label style={{width:130,fontSize:13,color:"#374151",flexShrink:0}}>{fi.label}</label>
+              {fi.type==="select"?<select value={editC[fi.key]||""} onChange={e=>setEditC({...editC,[fi.key]:e.target.value})} style={{flex:1,border:"1px solid #e2e8f0",borderRadius:8,padding:"6px 8px",fontSize:13}}>{fi.opts.map(o=><option key={o}>{o}</option>)}</select>
+              :<input type={fi.type} value={editC[fi.key]||""} onChange={e=>setEditC({...editC,[fi.key]:fi.type==="number"?parseFloat(e.target.value)||0:e.target.value})} style={{flex:1,border:"1px solid #e2e8f0",borderRadius:8,padding:"6px 8px",fontSize:13}}/>}
+            </div>
+          ))}
+          <div style={{display:"flex",gap:8,marginTop:18}}>
+            <button onClick={()=>{const exists=state.contracts.find(c=>c.id===editC.id);const nc=exists?state.contracts.map(c=>c.id===editC.id?editC:c):[...state.contracts,{...editC,id:"c"+Date.now()}];save({...state,contracts:nc});setShowContract(false);}} style={{flex:1,padding:"11px",background:LBLUE,color:"#fff",border:"none",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:14}}>Save Contract</button>
+            <button onClick={()=>setShowContract(false)} style={{padding:"11px 18px",border:"1px solid #e2e8f0",borderRadius:9,cursor:"pointer",fontSize:14}}>Cancel</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const icons={Dashboard:"📊","Report Numbers":"📋","My Reports":"📈","My Ratios":"📐","Business Plan":"🎯","Manage Contracts":"📁","Set Schedule":"📅"};
+  const pageContent={Dashboard:renderDashboard,"Report Numbers":renderReportNumbers,"My Reports":renderMyReports,"My Ratios":renderMyRatios,"Business Plan":renderBusinessPlan,"Manage Contracts":renderContracts,"Set Schedule":renderSetSchedule};
+
+  return(
+    <div style={{display:"flex",height:"100vh",fontFamily:"system-ui,sans-serif",background:"#f1f5f9",overflow:"hidden"}}>
+      <div style={{width:sidebarOpen?210:0,minWidth:sidebarOpen?210:0,background:"#1e1b4b",transition:"width 0.2s,min-width 0.2s",overflow:"hidden",display:"flex",flexDirection:"column",flexShrink:0}}>
+        <div style={{padding:"18px 14px 10px",minWidth:210}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:18}}>
+            <div style={{width:36,height:36,background:"linear-gradient(135deg,#4f46e5,#7c3aed)",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>📊</div>
+            <div><div style={{color:"#fff",fontWeight:800,fontSize:11}}>MIKE FERRY'S</div><div style={{color:"#a5b4fc",fontWeight:800,fontSize:10}}>NUMBERS ANALYZER</div></div>
+          </div>
+          {PAGES.map(p=>(
+            <button key={p} onClick={()=>setPage(p)} style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",cursor:"pointer",background:page===p?"rgba(79,70,229,0.25)":"transparent",color:page===p?"#a5b4fc":"#94a3b8",borderRadius:8,fontSize:13,fontWeight:page===p?700:400,border:"none",width:"100%",textAlign:"left",marginBottom:2}}>
+              <span>{icons[p]}</span>{p}
+            </button>
+          ))}
+        </div>
+        <div style={{flex:1}}/>
+        <div style={{padding:"10px 14px 16px",minWidth:210}}>
+          <button onClick={()=>{setYtdForm({...state.ytdBaseline});setShowYtd(true);}} style={{width:"100%",padding:"9px 12px",background:"linear-gradient(135deg,#4f46e5,#7c3aed)",color:"#fff",border:"none",borderRadius:9,cursor:"pointer",fontWeight:700,fontSize:12,marginBottom:6}}>📊 Update YTD Numbers</button>
+          <button onClick={()=>{
+            const dataStr = JSON.stringify(state, null, 2);
+            const blob = new Blob([dataStr], {type:"application/json"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            const date = new Date().toISOString().slice(0,10);
+            a.href = url; a.download = "relentless-na-backup-"+date+".json";
+            a.click(); URL.revokeObjectURL(url);
+          }} style={{width:"100%",padding:"9px 12px",background:"#0f172a",color:"#94a3b8",border:"1px solid #334155",borderRadius:9,cursor:"pointer",fontWeight:600,fontSize:12,marginBottom:4}}>⬇️ Export Backup</button>
+          <label style={{width:"100%",display:"block"}}>
+            <div style={{width:"100%",padding:"9px 12px",background:"#0f172a",color:"#94a3b8",border:"1px solid #334155",borderRadius:9,cursor:"pointer",fontWeight:600,fontSize:12,textAlign:"center",boxSizing:"border-box"}}>⬆️ Import Backup</div>
+            <input type="file" accept=".json" style={{display:"none"}} onChange={e=>{
+              const file = e.target.files[0]; if(!file) return;
+              const reader = new FileReader();
+              reader.onload = ev => {
+                try {
+                  const parsed = JSON.parse(ev.target.result);
+                  if(parsed.ytdBaseline && parsed.contracts) {
+                    save(parsed);
+                    alert("✅ Backup restored successfully!");
+                  } else { alert("❌ Invalid backup file."); }
+                } catch(err) { alert("❌ Could not read file. Make sure it's a valid backup."); }
+              };
+              reader.readAsText(file);
+              e.target.value = "";
+            }}/>
+          </label>
+          <div style={{color:"#475569",fontSize:9,textAlign:"center",marginTop:6}}>Relentless Team • 2026</div>
+        </div>
+      </div>
+      <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+        <div style={{background:"#fff",borderBottom:"1px solid #e2e8f0",padding:"0 20px",height:52,display:"flex",alignItems:"center",gap:12,flexShrink:0}}>
+          <button onClick={()=>setSidebarOpen(o=>!o)} style={{background:"none",border:"none",cursor:"pointer",fontSize:20,color:"#6b7280",padding:4}}>☰</button>
+          <div style={{flex:1,fontWeight:700,color:"#1e293b",fontSize:15}}>{page}</div>
+          <div style={{fontSize:12,color:"#6b7280"}}>Vlad Feldman | Raleigh NC</div>
+        </div>
+        <div style={{flex:1,overflowY:"auto"}}>{(pageContent[page]||renderDashboard)()}</div>
+      </div>
+      {showYtd&&renderYtdModal()}
+      {showContract&&renderContractModal()}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+</script>
+</body>
+</html>
